@@ -1,6 +1,6 @@
 # Cancellor
 
-Bind multiple cancellables to the lifetime of a view controller.
+Bind multiple cancellables to the lifetime of another object like your view controller.
 
 ## Usage
 
@@ -18,6 +18,19 @@ class MyViewController: UIViewController {
     }
   }
 }
+```
+
+To tie a subscription to the lifetime of another object use:
+
+```swift
+class ViewModel: NSObject { ... }
+let vm = ViewModel(...)
+
+...
+
+myPublisher
+  .sink(...)
+  .owned(by: vm)
 ```
 
 ## Import

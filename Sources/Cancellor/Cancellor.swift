@@ -31,8 +31,8 @@ import Combine
 /// A builder that passes through a sequence of `AnyCancellable` values.
 @available(iOS 13.0, macOS 10.15, *)
 @resultBuilder
-struct CancellablesBuilder {
-    static func buildBlock(_ parts: AnyCancellable...) -> [AnyCancellable] {
+public struct CancellablesBuilder {
+    public static func buildBlock(_ parts: AnyCancellable...) -> [AnyCancellable] {
         return parts
     }
 }
@@ -40,10 +40,20 @@ struct CancellablesBuilder {
 /// An extension that adds a function result builder to bind a list of cancellables
 /// to the lifetime of the current view controller.
 @available(iOS 13.0, macOS 10.15, *)
-extension ViewController {
+extension NSObject {
     private static var cancellablesLock: os_unfair_lock_s = { os_unfair_lock_s() }()
     private static var cancellablesKeyRawValue: UInt8 = 0
 
+    fileprivate func addCancellables(_ cancellables: [AnyCancellable]) {
+        os_unfair_lock_lock(&Self.cancellablesLock)
+        
+        var storage = objc_getAssociatedObject(self, &Self.cancellablesKeyRawValue) as? [AnyCancellable] ?? []
+        storage.append(contentsOf: cancellables)
+        objc_setAssociatedObject(self, &Self.cancellablesKeyRawValue, storage, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        os_unfair_lock_unlock(&Self.cancellablesLock)
+    }
+    
     /// Binds the given cancellables to the lifetime of the current controller.
     /// - Parameter content: A list of `AnyCancellable` expressions.
     ///
@@ -56,13 +66,25 @@ extension ViewController {
     ///   myPublisher3.assign(to: ..., on: ...)
     /// }
     /// ```
-    func ownedCancellables(@CancellablesBuilder content: () -> [AnyCancellable]) {
-        os_unfair_lock_lock(&Self.cancellablesLock)
-        
-        var storage = objc_getAssociatedObject(self, &Self.cancellablesKeyRawValue) as? [AnyCancellable] ?? []
-        content().forEach { $0.store(in: &storage) }
-        objc_setAssociatedObject(self, &Self.cancellablesKeyRawValue, storage, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        
-        os_unfair_lock_unlock(&Self.cancellablesLock)
+    public func ownedCancellables(@CancellablesBuilder content: () -> [AnyCancellable]) {
+        addCancellables(content())
+    }
+}
+
+extension AnyCancellable {
+    /// Bind the lifetime of this subscription to to the given object.
+    /// - parameter by: An `NSObject` inheriting owner.
+    ///
+    /// In case this cancellable isn't cancelled when the owner object is deinitialized
+    /// it will be cancelled and then released.
+    /// ```
+    /// let viewModel = ViewModel(...)
+    ///
+    /// myPublisher
+    ///   .sink { ... }
+    ///   .owned(by: viewModel)
+    /// ```
+    public func owned(by owner: NSObject) {
+        owner.addCancellables([self])
     }
 }
