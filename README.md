@@ -20,7 +20,7 @@ class MyViewController: UIViewController {
 }
 ```
 
-To tie a subscription to the lifetime of another object use:
+To tie a single subscription to the lifetime of another object use:
 
 ```swift
 class ViewModel: NSObject { ... }
