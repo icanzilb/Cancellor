@@ -25,7 +25,7 @@ class MyViewController: UIViewController {
 Add the following dependency to your **Package.swift** file:
 
 ```swift
-.package(url: "https://github.com/icanzilb/Cancellor, from: "0.1")
+.package(url: "https://github.com/icanzilb/Cancellor, from: "0.1.0")
 ```
 
 ## License
